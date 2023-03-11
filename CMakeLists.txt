@@ -40,7 +40,7 @@ target_compile_definitions(libgig PRIVATE PACKAGE="${PACKAGE_NAME}" VERSION="${V
 target_include_directories(libgig PUBLIC $<INSTALL_INTERFACE:include>)
 
 #libakai library
-add_library(libakai src/Akai.cpp)
+add_library(libakai STATIC src/Akai.cpp)
 set_target_properties(libakai PROPERTIES PUBLIC_HEADER src/Akai.h)
 target_include_directories(libakai PUBLIC $<INSTALL_INTERFACE:include>)
 target_include_directories(libakai PUBLIC src)
