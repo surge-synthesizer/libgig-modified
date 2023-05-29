@@ -24,6 +24,14 @@
 #ifndef __LIBGIG_HELPER_H__
 #define __LIBGIG_HELPER_H__
 
+// GCC10 and some others gives a warning on swapBytes_32 because it cannot
+// know if the void* points to enough memory. It does. So supress the warning.
+#ifndef __clang__
+#ifdef __GNUC__
+#pragma GCC diagnostic ignored "-Wstringop-overflow"
+#endif
+#endif
+
 #include <string.h>
 #include <string>
 #include <sstream>
