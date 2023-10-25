@@ -1,5 +1,6 @@
 # This was modified from the 4.3.0 to build libgig on all our platforms - baconpaul
-cmake_minimum_required(VERSION 3.0)
+cmake_policy(SET CMP0063 NEW)
+cmake_minimum_required(VERSION 3.20)
 project(libgig)
 
 #get version from configure.ac
