@@ -59,3 +59,6 @@ if (WIN32)
 		target_compile_definitions(libakai PUBLIC WINDOWS_MSVC_SCXT)
 	endif()
 endif()
+
+add_executable(sf2dump src/tools/sf2dump.cpp)
+target_link_libraries(sf2dump libgig)
