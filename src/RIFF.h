@@ -33,7 +33,8 @@
 #endif
 
 #ifndef DEBUG
-# define DEBUG 0
+// @baconpaul - defined as 0 and not defined are not the same. Redact this
+// # define DEBUG 0
 #endif
 
 #ifndef OVERRIDE
