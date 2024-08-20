@@ -60,5 +60,8 @@ if (WIN32)
 	endif()
 endif()
 
+set_target_properties(libgig PROPERTIES UNITY_BUILD FALSE)
+set_target_properties(libakai PROPERTIES UNITY_BUILD FALSE)
+
 add_executable(sf2dump src/tools/sf2dump.cpp)
 target_link_libraries(sf2dump libgig)
