@@ -336,16 +336,21 @@ int CheckRange(std::string genName, int min, int max, int &gen)
 
     if (gen < min)
     {
+#if DEBUG_RANGE
         std::cerr << "sf2: " << genName;
         std::cerr << " is below the minimum allowed value (min=" << min << "): " << gen
                   << std::endl;
+#endif
+
         gen = min;
     }
     if (gen > max)
     {
+#if DEBUG_RANGE
         std::cerr << "sf2: " << genName;
         std::cerr << " is above the maximum allowed value (max=" << max << "): " << gen
                   << std::endl;
+#endif
         gen = max;
     }
 
