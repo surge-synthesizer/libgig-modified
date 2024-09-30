@@ -35,6 +35,17 @@
 
 namespace RIFF {
 
+#if defined(WIN32)
+std::wstring utf8ToWS(const std::string &s)
+{
+    int count = MultiByteToWideChar(CP_UTF8, 0, s.c_str(), s.length(), NULL, 0);
+    std::wstring wstr(count, 0);
+    MultiByteToWideChar(CP_UTF8, 0, s.c_str(), s.length(),
+                        &wstr[0], count);
+    return wstr;
+}
+#endif
+
 // *************** Internal functions **************
 // *
 
@@ -1728,8 +1739,9 @@ namespace RIFF {
             throw RIFF::Exception("Can't open \"" + path + "\": " + sError);
         }
         #elif defined(WIN32)
-        hFileRead = hFileWrite = CreateFile(
-                                     path.c_str(), GENERIC_READ,
+        auto wpath = utf8ToWS(path);
+        hFileRead = hFileWrite = CreateFileW(
+                                     &wpath[0], GENERIC_READ,
                                      FILE_SHARE_READ | FILE_SHARE_WRITE,
                                      NULL, OPEN_EXISTING,
                                      FILE_ATTRIBUTE_NORMAL |
@@ -1813,18 +1825,19 @@ namespace RIFF {
                         throw Exception("Could not (re)open file \"" + Filename + "\" in read mode: " + sError);
                     }
                     #elif defined(WIN32)
-                    if (hFileRead != INVALID_HANDLE_VALUE) CloseHandle(hFileRead);
-                    hFileRead = hFileWrite = CreateFile(
-                                                 Filename.c_str(), GENERIC_READ,
-                                                 FILE_SHARE_READ | FILE_SHARE_WRITE,
-                                                 NULL, OPEN_EXISTING,
-                                                 FILE_ATTRIBUTE_NORMAL |
-                                                 FILE_FLAG_RANDOM_ACCESS,
-                                                 NULL
-                                             );
-                    if (hFileRead == INVALID_HANDLE_VALUE) {
-                        hFileRead = hFileWrite = INVALID_HANDLE_VALUE;
-                        throw Exception("Could not (re)open file \"" + Filename + "\" in read mode");
+                    {
+                        if (hFileRead != INVALID_HANDLE_VALUE)
+                            CloseHandle(hFileRead);
+                        auto wpathr = utf8ToWS(Filename);
+                        hFileRead = hFileWrite = CreateFileW(
+                            &wpathr[0], GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL,
+                            OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_RANDOM_ACCESS, NULL);
+                        if (hFileRead == INVALID_HANDLE_VALUE)
+                        {
+                            hFileRead = hFileWrite = INVALID_HANDLE_VALUE;
+                            throw Exception("Could not (re)open file \"" + Filename +
+                                            "\" in read mode");
+                        }
                     }
                     #else
                     if (hFileRead) fclose(hFileRead);
@@ -1843,26 +1856,22 @@ namespace RIFF {
                         throw Exception("Could not open file \"" + Filename + "\" in read+write mode: " + sError);
                     }
                     #elif defined(WIN32)
-                    if (hFileRead != INVALID_HANDLE_VALUE) CloseHandle(hFileRead);
-                    hFileRead = hFileWrite = CreateFile(
-                                                 Filename.c_str(),
-                                                 GENERIC_READ | GENERIC_WRITE,
-                                                 FILE_SHARE_READ,
-                                                 NULL, OPEN_ALWAYS,
-                                                 FILE_ATTRIBUTE_NORMAL |
-                                                 FILE_FLAG_RANDOM_ACCESS,
-                                                 NULL
-                                             );
-                    if (hFileRead == INVALID_HANDLE_VALUE) {
-                        hFileRead = hFileWrite = CreateFile(
-                                                     Filename.c_str(), GENERIC_READ,
-                                                     FILE_SHARE_READ | FILE_SHARE_WRITE,
-                                                     NULL, OPEN_EXISTING,
-                                                     FILE_ATTRIBUTE_NORMAL |
-                                                     FILE_FLAG_RANDOM_ACCESS,
-                                                     NULL
-                                                 );
-                        throw Exception("Could not (re)open file \"" + Filename + "\" in read+write mode");
+                    {
+                        if (hFileRead != INVALID_HANDLE_VALUE)
+                            CloseHandle(hFileRead);
+                        auto wpathrw = utf8ToWS(Filename);
+
+                        hFileRead = hFileWrite = CreateFileW(
+                            &wpathrw[0], GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, NULL,
+                            OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_RANDOM_ACCESS, NULL);
+                        if (hFileRead == INVALID_HANDLE_VALUE)
+                        {
+                            hFileRead = hFileWrite = CreateFileW(
+                                &wpathrw[0], GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL,
+                                OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_RANDOM_ACCESS, NULL);
+                            throw Exception("Could not (re)open file \"" + Filename +
+                                            "\" in read+write mode");
+                        }
                     }
                     #else
                     if (hFileRead) fclose(hFileRead);
@@ -2077,8 +2086,10 @@ namespace RIFF {
             throw Exception("Could not open file \"" + path + "\" for writing: " + sError);
         }
         #elif defined(WIN32)
-        hFileWrite = CreateFile(
-                         path.c_str(), GENERIC_WRITE, FILE_SHARE_READ,
+        auto wpath = utf8ToWS(path);
+
+        hFileWrite = CreateFileW(
+                         &wpath[0], GENERIC_WRITE, FILE_SHARE_READ,
                          NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL |
                          FILE_FLAG_RANDOM_ACCESS, NULL
                      );
