@@ -2143,7 +2143,7 @@ std::wstring utf8ToWS(const std::string &s)
         // associate new file with this File object from now on
         Filename = path;
         bIsNewFile = false;
-        Mode = (stream_mode_t) -1;       // Just set it to an undefined mode ...
+        Mode = stream_mode_undefined;       // Just set it to an undefined mode ...
         SetMode(stream_mode_read_write); // ... so SetMode() has to reopen the file handles.
 
         if (pProgress)

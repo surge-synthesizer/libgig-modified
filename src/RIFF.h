@@ -164,7 +164,8 @@ namespace RIFF {
     enum stream_mode_t {
         stream_mode_read       = 0,
         stream_mode_read_write = 1,
-        stream_mode_closed     = 2
+        stream_mode_closed     = 2,
+        stream_mode_undefined  = 0xFF
     };
 
     /** Current state of the file stream. */
