@@ -560,17 +560,17 @@ void Region::SetGenerator(sf2::File *pFile, GenList &Gen)
         {
             LoopStart += pSample->StartLoop;
             LoopEnd += pSample->EndLoop;
-            // Surge Fix: While this means it is invalid, lets just clap
-            LoopEnd = std::clamp(LoopEnd, 0U, pSample->End);
 
             if (LoopStart < pSample->Start || LoopStart > pSample->End || LoopStart > LoopEnd ||
                 LoopEnd > pSample->End)
             {
-                throw Exception(std::string() + "Broken SF2 file (invalid loops)\n" +
+                // Surge Fix: Turn off loop here
+                HasLoop = false;
+                /* throw Exception(std::string() + "Broken SF2 file (invalid loops)\n" +
                                 "LoopStart/End=" + std::to_string(LoopStart) + "/" +
                                 std::to_string(LoopEnd) +
                                 "\nSample Start/End=" + std::to_string(pSample->Start) + "/" +
-                                std::to_string(pSample->End));
+                                std::to_string(pSample->End)); */
             }
 
             LoopStart -= pSample->Start; // Relative to the sample start
