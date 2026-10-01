@@ -221,6 +221,8 @@ namespace sf2 {
             uint16_t     ModAmount;
             Modulator    ModAmtSrcOper;
             SFTransform  ModTransOper;
+            SFModulator  ModSrcOperRaw;
+            SFModulator  ModAmtSrcOperRaw;
 
             ModulatorItem(ModList& mod);
     };
@@ -371,6 +373,13 @@ namespace sf2 {
             int initialFilterFc  /* in absolute cents */, initialFilterQ /* in centibels */;
             int initialAttenuation; // in centibels (positive = attenuation)
 
+            int sampleModes; // 0 no loop, 1 continuous loop, 3 loop until release
+            int scaleTuning; // in cents per key
+            int keynumToVolEnvHold, keynumToVolEnvDecay; // in timecents per key
+            int keynumToModEnvHold, keynumToModEnvDecay; // in timecents per key
+            int keynum, velocity; // fixed key and velocity, -1 means not used
+            int chorusEffectsSend, reverbEffectsSend; // in 0.1% units
+
             uint exclusiveClass; // exclusive group
 
             Sample* pSample;
@@ -425,6 +434,13 @@ namespace sf2 {
             int    GetInitialFilterFc(Region* pPresetRegion); // in absolute cents
             int    GetInitialFilterQ(Region* pPresetRegion); // in centibels
             int    GetInitialAttenuation(Region* pPresetRegion = NULL); // in centibels
+            int    GetScaleTuning(Region* pPresetRegion = NULL); // in cents per key
+            int    GetKeynumToVolEnvHold(Region* pPresetRegion = NULL); // in timecents per key
+            int    GetKeynumToVolEnvDecay(Region* pPresetRegion = NULL); // in timecents per key
+            int    GetKeynumToModEnvHold(Region* pPresetRegion = NULL); // in timecents per key
+            int    GetKeynumToModEnvDecay(Region* pPresetRegion = NULL); // in timecents per key
+            int    GetChorusEffectsSend(Region* pPresetRegion = NULL); // in 0.1% units
+            int    GetReverbEffectsSend(Region* pPresetRegion = NULL); // in 0.1% units
 
             friend class Instrument;
             friend class Preset;

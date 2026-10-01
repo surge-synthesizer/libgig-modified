@@ -113,7 +113,10 @@ Modulator::Modulator(SFModulator mod)
 }
 
 ModulatorItem::ModulatorItem(ModList &mod)
-    : ModSrcOper(Modulator(mod.ModSrcOper)), ModAmtSrcOper(Modulator(mod.ModAmtSrcOper))
+    : ModSrcOper(Modulator(mod.ModSrcOper)), ModDestOper(mod.ModDestOper),
+      ModAmount(mod.ModAmount), ModAmtSrcOper(Modulator(mod.ModAmtSrcOper)),
+      ModTransOper(mod.ModTransOper), ModSrcOperRaw(mod.ModSrcOper),
+      ModAmtSrcOperRaw(mod.ModAmtSrcOper)
 {
 }
 
@@ -320,6 +323,12 @@ Region::Region()
 
     exclusiveClass = 0;
 
+    sampleModes = 0;
+    scaleTuning = 100;
+    keynumToVolEnvHold = keynumToVolEnvDecay = keynumToModEnvHold = keynumToModEnvDecay = 0;
+    keynum = velocity = -1;
+    chorusEffectsSend = reverbEffectsSend = 0;
+
     initialFilterFc = 13500;
     initialFilterQ = 0;
 
@@ -364,7 +373,7 @@ void Region::SetGenerator(sf2::File *pFile, GenList &Gen)
     switch (Gen.GenOper)
     {
     case START_ADDRS_OFFSET:
-        startAddrsOffset = Gen.GenAmount.wAmount;
+        startAddrsOffset = Gen.GenAmount.shAmount;
         break;
     case END_ADDRS_OFFSET:
         if (Gen.GenAmount.shAmount <= 0)
@@ -385,7 +394,7 @@ void Region::SetGenerator(sf2::File *pFile, GenList &Gen)
         LoopEnd += endloopAddrsOffset;
         break;
     case START_ADDRS_COARSE_OFFSET:
-        startAddrsCoarseOffset = Gen.GenAmount.wAmount;
+        startAddrsCoarseOffset = Gen.GenAmount.shAmount;
         break;
     case MOD_LFO_TO_PITCH:
         modLfoToPitch = Gen.GenAmount.shAmount;
@@ -416,15 +425,19 @@ void Region::SetGenerator(sf2::File *pFile, GenList &Gen)
         CheckRange("modEnvToFilterFc", -12000, 12000, modEnvToFilterFc);
         break;
     case END_ADDRS_COARSE_OFFSET:
-        endAddrsCoarseOffset = Gen.GenAmount.wAmount;
+        endAddrsCoarseOffset = Gen.GenAmount.shAmount;
         break;
     case MOD_LFO_TO_VOLUME:
         modLfoToVolume = Gen.GenAmount.shAmount;
         CheckRange("modLfoToVolume", -960, 960, modLfoToVolume);
         break;
     case CHORUS_EFFECTS_SEND:
+        chorusEffectsSend = Gen.GenAmount.shAmount;
+        CheckRange("chorusEffectsSend", 0, 1000, chorusEffectsSend);
         break;
     case REVERB_EFFECTS_SEND:
+        reverbEffectsSend = Gen.GenAmount.shAmount;
+        CheckRange("reverbEffectsSend", 0, 1000, reverbEffectsSend);
         break;
     case PAN:
         pan = Gen.GenAmount.shAmount;
@@ -447,7 +460,7 @@ void Region::SetGenerator(sf2::File *pFile, GenList &Gen)
         break;
     case FREQ_VIB_LFO:
         freqVibLfo = Gen.GenAmount.shAmount;
-        CheckRange("freqModLfo", -16000, 4500, freqModLfo);
+        CheckRange("freqVibLfo", -16000, 4500, freqVibLfo);
         break;
     case DELAY_MOD_ENV:
         EG2PreAttackDelay = Gen.GenAmount.shAmount;
@@ -474,8 +487,12 @@ void Region::SetGenerator(sf2::File *pFile, GenList &Gen)
         CheckRange("releaseModEnv", -12000, 8000, EG2Release);
         break;
     case KEYNUM_TO_MOD_ENV_HOLD:
+        keynumToModEnvHold = Gen.GenAmount.shAmount;
+        CheckRange("keynumToModEnvHold", -1200, 1200, keynumToModEnvHold);
         break;
     case KEYNUM_TO_MOD_ENV_DECAY:
+        keynumToModEnvDecay = Gen.GenAmount.shAmount;
+        CheckRange("keynumToModEnvDecay", -1200, 1200, keynumToModEnvDecay);
         break;
     case DELAY_VOL_ENV:
         EG1PreAttackDelay = Gen.GenAmount.shAmount;
@@ -502,8 +519,12 @@ void Region::SetGenerator(sf2::File *pFile, GenList &Gen)
         CheckRange("releaseVolEnv", -12000, 8000, EG1Release);
         break;
     case KEYNUM_TO_VOL_ENV_HOLD:
+        keynumToVolEnvHold = Gen.GenAmount.shAmount;
+        CheckRange("keynumToVolEnvHold", -1200, 1200, keynumToVolEnvHold);
         break;
     case KEYNUM_TO_VOL_ENV_DECAY:
+        keynumToVolEnvDecay = Gen.GenAmount.shAmount;
+        CheckRange("keynumToVolEnvDecay", -1200, 1200, keynumToVolEnvDecay);
         break;
     case INSTRUMENT:
     {
@@ -528,19 +549,23 @@ void Region::SetGenerator(sf2::File *pFile, GenList &Gen)
         CheckRange("maxVel", 0, 127, maxVel);
         break;
     case STARTLOOP_ADDRS_COARSE_OFFSET:
-        startloopAddrsCoarseOffset = Gen.GenAmount.wAmount;
+        startloopAddrsCoarseOffset = Gen.GenAmount.shAmount;
         LoopStart += startloopAddrsCoarseOffset * 32768;
         break;
     case KEYNUM:
+        keynum = Gen.GenAmount.shAmount;
+        CheckRange("keynum", -1, 127, keynum);
         break;
     case VELOCITY:
+        velocity = Gen.GenAmount.shAmount;
+        CheckRange("velocity", -1, 127, velocity);
         break;
     case INITIAL_ATTENUATION:
         initialAttenuation = Gen.GenAmount.shAmount;
         CheckRange("initialAttenuation", 0, 1440, initialAttenuation);
         break;
     case ENDLOOP_ADDRS_COARSE_OFFSET:
-        endloopAddrsCoarseOffset = Gen.GenAmount.wAmount;
+        endloopAddrsCoarseOffset = Gen.GenAmount.shAmount;
         LoopEnd += endloopAddrsCoarseOffset * 32768;
         break;
     case COARSE_TUNE:
@@ -583,11 +608,12 @@ void Region::SetGenerator(sf2::File *pFile, GenList &Gen)
         break;
     }
     case SAMPLE_MODES:
-        HasLoop = Gen.GenAmount.wAmount & 1;
-        // TODO: 3 indicates a sound which loops for the duration of key depression
-        //       then proceeds to play the remainder of the sample.
+        sampleModes = Gen.GenAmount.wAmount & 3;
+        HasLoop = sampleModes & 1;
         break;
     case SCALE_TUNING:
+        scaleTuning = Gen.GenAmount.shAmount;
+        CheckRange("scaleTuning", 0, 1200, scaleTuning);
         break;
     case EXCLUSIVE_CLASS:
         exclusiveClass = Gen.GenAmount.wAmount;
@@ -601,7 +627,17 @@ void Region::SetGenerator(sf2::File *pFile, GenList &Gen)
 
 void Region::SetModulator(sf2::File *pFile, ModList &Mod)
 {
-    modulators.push_back(ModulatorItem(Mod));
+    ModulatorItem item(Mod);
+    for (auto &m : modulators)
+    {
+        if (m.ModSrcOperRaw == item.ModSrcOperRaw && m.ModDestOper == item.ModDestOper &&
+            m.ModAmtSrcOperRaw == item.ModAmtSrcOperRaw && m.ModTransOper == item.ModTransOper)
+        {
+            m = item;
+            return;
+        }
+    }
+    modulators.push_back(item);
     /*switch(srcType) {
         case NO_CONTROLLER:
             break;
@@ -851,6 +887,62 @@ int Region::GetInitialFilterQ(Region *pPresetRegion)
     return CheckRange("GetInitialFilterQ()", 0, 960, val);
 }
 
+static int AddPresetValue(int instValue, Region *pPresetRegion, int presetValue)
+{
+    if (pPresetRegion == NULL || presetValue == NONE)
+        return instValue;
+    return instValue + presetValue;
+}
+
+int Region::GetScaleTuning(Region *pPresetRegion)
+{
+    int val = AddPresetValue(scaleTuning, pPresetRegion,
+                             pPresetRegion ? pPresetRegion->scaleTuning : NONE);
+    return CheckRange("GetScaleTuning()", 0, 1200, val);
+}
+
+int Region::GetKeynumToVolEnvHold(Region *pPresetRegion)
+{
+    int val = AddPresetValue(keynumToVolEnvHold, pPresetRegion,
+                             pPresetRegion ? pPresetRegion->keynumToVolEnvHold : NONE);
+    return CheckRange("GetKeynumToVolEnvHold()", -1200, 1200, val);
+}
+
+int Region::GetKeynumToVolEnvDecay(Region *pPresetRegion)
+{
+    int val = AddPresetValue(keynumToVolEnvDecay, pPresetRegion,
+                             pPresetRegion ? pPresetRegion->keynumToVolEnvDecay : NONE);
+    return CheckRange("GetKeynumToVolEnvDecay()", -1200, 1200, val);
+}
+
+int Region::GetKeynumToModEnvHold(Region *pPresetRegion)
+{
+    int val = AddPresetValue(keynumToModEnvHold, pPresetRegion,
+                             pPresetRegion ? pPresetRegion->keynumToModEnvHold : NONE);
+    return CheckRange("GetKeynumToModEnvHold()", -1200, 1200, val);
+}
+
+int Region::GetKeynumToModEnvDecay(Region *pPresetRegion)
+{
+    int val = AddPresetValue(keynumToModEnvDecay, pPresetRegion,
+                             pPresetRegion ? pPresetRegion->keynumToModEnvDecay : NONE);
+    return CheckRange("GetKeynumToModEnvDecay()", -1200, 1200, val);
+}
+
+int Region::GetChorusEffectsSend(Region *pPresetRegion)
+{
+    int val = AddPresetValue(chorusEffectsSend, pPresetRegion,
+                             pPresetRegion ? pPresetRegion->chorusEffectsSend : NONE);
+    return CheckRange("GetChorusEffectsSend()", 0, 1000, val);
+}
+
+int Region::GetReverbEffectsSend(Region *pPresetRegion)
+{
+    int val = AddPresetValue(reverbEffectsSend, pPresetRegion,
+                             pPresetRegion ? pPresetRegion->reverbEffectsSend : NONE);
+    return CheckRange("GetReverbEffectsSend()", 0, 1000, val);
+}
+
 int Region::GetInitialAttenuation(Region *pPresetRegion)
 {
     int val = (pPresetRegion == NULL || pPresetRegion->initialAttenuation == NONE)
@@ -964,7 +1056,18 @@ Region *Instrument::CreateRegion()
         r->initialFilterFc = pGlobalRegion->initialFilterFc;
         r->initialFilterQ = pGlobalRegion->initialFilterQ;
         r->initialAttenuation = pGlobalRegion->initialAttenuation;
+        r->scaleTuning = pGlobalRegion->scaleTuning;
+        r->keynumToVolEnvHold = pGlobalRegion->keynumToVolEnvHold;
+        r->keynumToVolEnvDecay = pGlobalRegion->keynumToVolEnvDecay;
+        r->keynumToModEnvHold = pGlobalRegion->keynumToModEnvHold;
+        r->keynumToModEnvDecay = pGlobalRegion->keynumToModEnvDecay;
+        r->chorusEffectsSend = pGlobalRegion->chorusEffectsSend;
+        r->reverbEffectsSend = pGlobalRegion->reverbEffectsSend;
+        r->modulators = pGlobalRegion->modulators;
 
+        r->sampleModes = pGlobalRegion->sampleModes;
+        r->keynum = pGlobalRegion->keynum;
+        r->velocity = pGlobalRegion->velocity;
         r->HasLoop = pGlobalRegion->HasLoop;
         r->LoopStart = pGlobalRegion->LoopStart;
         r->LoopEnd = pGlobalRegion->LoopEnd;
@@ -1067,6 +1170,7 @@ Region *Preset::CreateRegion()
     r->freqModLfo = r->delayModLfo = r->freqVibLfo = r->delayVibLfo = NONE;
     r->initialFilterFc = r->initialFilterQ = NONE;
     r->initialAttenuation = NONE;
+    r->scaleTuning = NONE;
 
     if (pGlobalRegion != NULL)
     {
@@ -1101,6 +1205,14 @@ Region *Preset::CreateRegion()
         r->initialFilterFc = pGlobalRegion->initialFilterFc;
         r->initialFilterQ = pGlobalRegion->initialFilterQ;
         r->initialAttenuation = pGlobalRegion->initialAttenuation;
+        r->scaleTuning = pGlobalRegion->scaleTuning;
+        r->keynumToVolEnvHold = pGlobalRegion->keynumToVolEnvHold;
+        r->keynumToVolEnvDecay = pGlobalRegion->keynumToVolEnvDecay;
+        r->keynumToModEnvHold = pGlobalRegion->keynumToModEnvHold;
+        r->keynumToModEnvDecay = pGlobalRegion->keynumToModEnvDecay;
+        r->chorusEffectsSend = pGlobalRegion->chorusEffectsSend;
+        r->reverbEffectsSend = pGlobalRegion->reverbEffectsSend;
+        r->modulators = pGlobalRegion->modulators;
     }
 
     return r;
@@ -1118,11 +1230,24 @@ void Preset::LoadRegions(int idx1, int idx2)
             throw Exception("Broken SF2 file (invalid PresetGenNdx)");
         }
 
+        int mIdx1 = pFile->PresetBags[i].ModNdx;
+        int mIdx2 = pFile->PresetBags[i + 1].ModNdx;
+
+        if (mIdx1 < 0 || mIdx2 < 0 || mIdx1 > mIdx2 || mIdx2 >= pFile->PresetModLists.size())
+        {
+            throw Exception("Broken SF2 file (invalid PresetModNdx)");
+        }
+
         Region *reg = CreateRegion();
 
         for (int j = gIdx1; j < gIdx2; j++)
         {
             reg->SetGenerator(pFile, pFile->PresetGenLists[j]);
+        }
+
+        for (int j = mIdx1; j < mIdx2; j++)
+        {
+            reg->SetModulator(pFile, pFile->PresetModLists[j]);
         }
         if (reg->pInstrument == NULL)
         {
